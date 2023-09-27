@@ -59,5 +59,5 @@ if __name__ == '__main__':
         
         #Only perform the search every WAIT_THRESHOLD seconds
         if execution_time < WAIT_THRESHOLD:
-            time.sleep(WAIT_THRESHOLD-exeuction_time)
+            time.sleep(WAIT_THRESHOLD-execution_time)
         
