@@ -1,3 +1,2 @@
-funda https://www.funda.nl/
-easy https://www.easymakelaars.nl/aanbod/woningaanbod/huur/
 rotsvast https://www.rotsvast.nl/woningaanbod/
+easy https://www.easymakelaars.nl/aanbod/woningaanbod/huur/
