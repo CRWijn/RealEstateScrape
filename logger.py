@@ -1,8 +1,8 @@
 from datetime import datetime
 
 class CustomLogger:
-    def __init__(self):
-        self.max_entries = 100
+    def __init__(self, max_entries):
+        self.max_entries = max_entries
         self.file_name = 'checks.log'
 
     def log(self, string_to_log):

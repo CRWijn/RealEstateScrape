@@ -14,6 +14,7 @@ import time
 from website import Website
 from website import read_websites
 from logger import CustomLogger
+import traceback
 
 if __name__ == '__main__':
     #Setup all the selenium stuff
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 
     #Setup periodicity
     WAIT_THRESHOLD = 300 # 5-minutes
-    logger = CustomLogger()
+    logger = CustomLogger(500)
 
     #Loop through websites and execute the code for them
     while True:
@@ -51,13 +52,15 @@ if __name__ == '__main__':
             try:
                 report = site.execute_search(browser, chrome_options)
                 logger.log(report)
-            except Exception as e:
-                logger.log("Error in main: " + str(e))
+            except:
+                err = traceback.format_exc()
+                print(err)
+                logger.log("Error in main: " + err)
         execution_time = time.time()-start_wait
         #LOG: Execution time and iteration results
         logger.log('Full execution took: ' + str(execution_time) + 's')
         
         #Only perform the search every WAIT_THRESHOLD seconds
         if execution_time < WAIT_THRESHOLD:
-            time.sleep(WAIT_THRESHOLD-exeuction_time)
+            time.sleep(WAIT_THRESHOLD-execution_time)
         

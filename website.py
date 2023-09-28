@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import ui
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.keys import Keys
 
 import time
@@ -32,7 +33,7 @@ class Website:
         google_maps.get('https://www.google.com/maps/')
         google_maps.find_element(By.CLASS_NAME, 'VfPpkd-LgbsSe.VfPpkd-LgbsSe-OWXEXe-k8QpJ.VfPpkd-LgbsSe-OWXEXe-dgl2Hf.nCP5yc.AjY5Oe.DuMIQc.LQeN7.Nc7WLe').click()#Press directions
         google_maps.find_element(By.ID, 'hArJGc').click()#Press
-        time.sleep(2)
+        time.sleep(4)
         google_maps.find_element(By.XPATH, '//*[@id="omnibox-directions"]/div/div[2]/div/div/div/div[3]/button').click()
         src_srch = google_maps.find_element(By.XPATH, '//*[@id="sb_ifc50"]/input')
         dest_srch = google_maps.find_element(By.XPATH, '//*[@id="sb_ifc51"]/input')
@@ -53,6 +54,7 @@ class Website:
                 user_id = lines[0].strip()
                 token = lines[1].strip()
         except FileNotFoundError:
+            print("Can't find file")
             return 'Create a credentials.txt file containing your id'
         except Exception as e:
             print("Reached exception, " + str(e))
@@ -63,10 +65,13 @@ class Website:
         #Open the real estate agency website
         print("Opening Rotsvast")
         browser.get(url)
-        browser.find_element(By.CLASS_NAME, 'mb_cookie_accept_btn').click()
+        try:
+            browser.find_element(By.CLASS_NAME, 'mb_cookie_accept_btn').click()
+        except ElementNotInteractableException:
+            pass
 
         locations = ['Leiden', 'Amstelveen', 'Amsterdam']
-        time.sleep(6)
+        time.sleep(12)
         browser.find_element(By.CLASS_NAME, 'btn-custom.btn-grey.hidden-lg').click()
         #Select max price as 1500 euros
         browser.find_element(By.XPATH, '//*[@id="search"]/div[5]/div[2]/div[2]/div/button').click()
@@ -87,6 +92,7 @@ class Website:
                 #Clear the search box and then type in the next location
                 search_box.clear()
                 search_box.send_keys(location)
+                search_box.send_keys(Keys.RETURN)
                 print("Checking " + location)
                 blacklist = ["Bezichtiging vol", "Verhuurd"]
                 if location == 'Leiden':
@@ -96,7 +102,7 @@ class Website:
                 #Loop: check every page
                 while True:
                     #Get all listings on the page
-                    time.sleep(5)
+                    time.sleep(10)
                     listings = browser.find_elements_by_class_name('residence-gallery.clickable-parent.col-md-4')
                     print("Number of listings on this page: " + str(len(listings)))
                     for listing in listings:
@@ -137,7 +143,7 @@ class Website:
                         src_srch.clear()
                         src_srch.send_keys(listing_address.text + ', ' + location)
                         src_srch.send_keys(Keys.RETURN)
-                        time.sleep(3)
+                        time.sleep(6)
                         journey_obj = google_maps.find_element(By.XPATH, '//*[@id="QA0Szd"]/div/div/div[1]/div[2]/div/div[1]/div/div/div[4]')#Get the list of ways to get there
                         journeys = journey_obj.find_elements(By.XPATH, '*')#Get all of them
                         journey_lengths = []
