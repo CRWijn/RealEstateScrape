@@ -28,8 +28,8 @@ if __name__ == '__main__':
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_service = ChromeService('chromedriver')
     #These two stop a window from being created, if u dont want it uncomment them
-    #chrome_options.headless = True
-    #chrome_service.creationflags = CREATE_NO_WINDOW
+    chrome_options.headless = True
+    chrome_service.creationflags = CREATE_NO_WINDOW
     #----------------------------------------------
     browser = webdriver.Chrome(options = chrome_options, service = chrome_service)
 

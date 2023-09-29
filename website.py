@@ -41,7 +41,7 @@ class Website:
         #Press accept cookies
         try:
             browser.find_element(By.XPATH, '//*[@id="didomi-notice-agree-button"]').click()
-        except ElementNotInteractableException:
+        except NoSuchElementException:
             pass
 
         #Read all pages
