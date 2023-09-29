@@ -13,9 +13,9 @@ class CustomLogger:
         with open(self.file_name, 'r') as file: #Get the file size and get ready to delete the first line
             lines = file.readlines()
             file_len = len(lines)
-        if file_len > self.max_entries: #Delete first line
+        if file_len > self.max_entries: #Delete excess lines
             with open(self.file_name, 'w') as file:
-                for line in lines[1:]:
+                for line in lines[(file_len - self.max_entries):]:
                     file.write(line)
 
 
