@@ -113,8 +113,67 @@ class Website:
 
     @staticmethod
     def easy(url, browser, chrome_options):
+        #Open a google maps instance
+        maps = GoogleMaps(chrome_options)
+
+        #Get the telegram bot ready
+        params = init_tel_bot()
+        if type(params) == 'string':
+            return params
+        telegram_url, tel_params = params
+
+        #Read all the checked listings into a list so that we can wipe the archive of old listings
+        checked_ids = read_listings('easy')
+        
+        #Open the real estate agency website
+        print("Opening Easy Makelaars")
         browser.get(url)
-        return 'Unfinished code'
+        locations = ['Leiden', 'Amstelveen', 'Amsterdam', 'Haarlem']
+        with open('checked_archive/easy.txt', 'w') as file:
+            time.sleep(10)
+            listings = browser.find_elements(By.CLASS_NAME, 'middle')[2].find_element(By.TAG_NAME, 'ul').find_elements(By.XPATH, '*')
+            print("Number of listings on this page: " + str(len(listings)))
+            for listing in listings:
+                listing_id = listing.find_element(By.CLASS_NAME, 'street-address').text
+                print("*----------------------*")
+                print(listing_id)
+                
+                #Check if it's in one of the locations
+                city = listing.find_element(By.CLASS_NAME, 'locality').text
+                if not city in locations:
+                    print("Not looking for listings in city: " + city)
+                    continue
+
+                #Check price
+                print("Checking price")
+                price_html = listing.find_element(By.CLASS_NAME, 'kenmerkValue')
+                price = int(price_html.text.split(' ')[1].split(',')[0].replace('.', ''))
+                if price > 1400:
+                    print("Too expensive")
+                    continue
+                print("Price is fine")
+
+                #Check if it's been checked before
+                print("Checking archive")
+                file.write(listing_id + '\n')
+                if listing_id in checked_ids:
+                    print("Listing already checked")
+                    continue
+                print("New listing")
+
+                #Check google maps for travel time
+                max_time = 1.17 if city == 'Leiden' else 1
+                address = listing_id + ', ' + city
+                if not maps.is_close(address, max_time):
+                    continue
+
+                #If good: send notification
+                print("Getting link to listing")
+                hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
+                tel_params['text'] = "New suitable rental found: " + hyper_link
+                r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+            print("Done with Easy Makelaars")
+        return 'Done with Easy Makelaars'
 
     @staticmethod
     def rotsvast(url, browser, chrome_options):
@@ -144,7 +203,6 @@ class Website:
         browser.find_element(By.XPATH, '//*[@id="search"]/div[5]/div[2]/div[2]/div/button').click()
         browser.find_element(By.XPATH, '//*[@id="search"]/div[5]/div[2]/div[2]/div/div/ul/li[13]/a').click()
         search_box = browser.find_element(By.ID, 'searchPattern')
-
         
         with open('checked_archive/rotsvast.txt', 'w') as file:
             for location in locations:
@@ -180,6 +238,7 @@ class Website:
                                 pass
                         if cont:
                             continue
+                        
                         #Check price
                         print("Checking price")
                         price_html = listing.find_element(By.CLASS_NAME, 'residence-price')
