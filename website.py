@@ -8,9 +8,11 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import InvalidArgumentException
 from selenium.webdriver.common.keys import Keys
+from datetime import datetime
 
 import time
 import requests
+import traceback
 
 class Website:
     def __init__(self, url, execution_func):
@@ -44,71 +46,96 @@ class Website:
         except NoSuchElementException:
             pass
 
+        new_listings = 0;
+
         #Read all pages
         with open('checked_archive/funda.txt', 'w') as file:
-            while True:
-                time.sleep(10)
-                listings = browser.find_elements_by_class_name('border-light-2.mb-4.border-b.pb-4')#Grab available listings
-                print("Number of listings on this page: " + str(len(listings)))
-                for listing in listings:
-                    #Check if it's an advert
+            try:
+                while True:
+                    time.sleep(10)
+                    listings = browser.find_elements_by_class_name('border-light-2.mb-4.border-b.pb-4')#Grab available listings
+                    print("Number of listings on this page: " + str(len(listings)))
+                    for listing in listings:
+                        #Check if it's an advert
+                        try:
+                            listing_id = listing.find_element(By.TAG_NAME, 'h2').text
+                        except NoSuchElementException:
+                            print("Listing is an advert")
+                            continue
+                        print("*----------------------*")
+                        print(listing_id)
+                        #Check if it's a huurcomplex
+                        try:
+                            listing.find_element(By.CLASS_NAME, 'inline.align-middle')
+                            print("Huurcomplex... skipping")
+                            continue #If this class exist that means it's part of a huurcomplex
+                        except NoSuchElementException:
+                            pass
+
+                        #Check the price
+                        print("Checking price")
+                        price_html = listing.find_element(By.TAG_NAME, 'p')
+                        price = int(price_html.text.split(' ')[1].replace('.', ''))
+                        if price > 1400:
+                            print("Too expensive")
+                            continue
+                        print("Price is fine")
+
+                        #There's no need to check a blacklist since the filter is set to past 24 hours
+                        #Check if it's been checked before
+                        print("Checking archive")
+                        file.write(listing_id + '\n')
+                        if listing_id in checked_ids:
+                            print("Listing already checked")
+                            continue
+                        print("New listing")
+
+                        #Check google maps for travel time
+                        city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
+                        address = listing_id + ', ' + city
+                        max_time = 1.17 if city == 'Leiden' else 1
+                        failed = False
+                        skip = False
+                        for try_count in range(3):# Try accessing the maps a maximum of 3 times
+                            try:
+                                print("Attempting to search google maps")
+                                dist = maps.is_close(address, max_time)
+                                failed = False
+                                if not dist:
+                                    skip = True
+                                break
+                            except:
+                                print("Failed to search google maps")
+                                failed = True
+                                maps.close()
+                                maps = GoogleMaps(chrome_options)
+                        if skip:
+                            continue
+                        if failed:
+                            write_listings(file, checked_ids)#Re-write the checked ids
+                            return traceback.format_exc()
+
+                        #If good: send notification
+                        print("Getting link to listing")
+                        hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
+                        tel_params['text'] = "New suitable rental found: " + hyper_link
+                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                        checked_ids.append(listing_id)
+                        new_listings += 1
+                    
+                    #Check if there is more pages
                     try:
-                        listing_id = listing.find_element(By.TAG_NAME, 'h2').text
-                    except NoSuchElementException:
-                        print("Listing is an advert")
-                        continue
-                    print("*----------------------*")
-                    print(listing_id)
-                    #Check if it's a huurcomplex
-                    try:
-                        listing.find_element(By.CLASS_NAME, 'inline.align-middle')
-                        print("Huurcomplex... skipping")
-                        continue #If this class exist that means it's part of a huurcomplex
-                    except NoSuchElementException:
-                        pass
-
-                    #Check the price
-                    print("Checking price")
-                    price_html = listing.find_element(By.TAG_NAME, 'p')
-                    price = int(price_html.text.split(' ')[1].replace('.', ''))
-                    if price > 1400:
-                        print("Too expensive")
-                        continue
-                    print("Price is fine")
-
-                    #There's no need to check a blacklist since the filter is set to past 24 hours
-                    #Check if it's been checked before
-                    print("Checking archive")
-                    file.write(listing_id + '\n')
-                    if listing_id in checked_ids:
-                        print("Listing already checked")
-                        continue
-                    print("New listing")
-
-                    #Check google maps for travel time
-                    city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
-                    address = listing_id + ', ' + city
-                    max_time = 1.17 if city == 'Leiden' else 1
-                    #Check google maps for travel time
-                    if not maps.is_close(address, max_time):
-                        continue
-
-                    #If good: send notification
-                    print("Getting link to listing")
-                    hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
-                    tel_params['text'] = "New suitable rental found: " + hyper_link
-                    r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-                
-                #Check if there is more pages
-                try:
-                    print("Checking for more pages")
-                    next_page = browser.find_element(By.XPATH, '//*[text()="Volgende"]').find_element(By.XPATH, '..')
-                    browser.get(next_page.get_attribute('href'))
-                except (NoSuchElementException, InvalidArgumentException) as e:
-                    print("No more pages")
-                    break
-        print("Done with Funda")
-        return 'Done with Funda'
+                        print("Checking for more pages")
+                        next_page = browser.find_element(By.XPATH, '//*[text()="Volgende"]').find_element(By.XPATH, '..')
+                        browser.get(next_page.get_attribute('href'))
+                    except (NoSuchElementException, InvalidArgumentException) as e:
+                        print("No more pages")
+                        break
+            except:
+                    write_listings(file, checked_ids)#Re-write the checked ids
+                    return traceback.format_exc()
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Funda" + ", new listings found: " + str(new_listings))
+        return 'Done with Funda' + ", new listings found: " + str(new_listings)
             
 
     @staticmethod
@@ -129,51 +156,93 @@ class Website:
         print("Opening Easy Makelaars")
         browser.get(url)
         locations = ['Leiden', 'Amstelveen', 'Amsterdam', 'Haarlem']
+
+        new_listings = 0;
+        
         with open('checked_archive/easy.txt', 'w') as file:
-            time.sleep(10)
-            listings = browser.find_elements(By.CLASS_NAME, 'middle')[2].find_element(By.TAG_NAME, 'ul').find_elements(By.XPATH, '*')
-            print("Number of listings on this page: " + str(len(listings)))
-            for listing in listings:
-                listing_id = listing.find_element(By.CLASS_NAME, 'street-address').text
-                print("*----------------------*")
-                print(listing_id)
-                
-                #Check if it's in one of the locations
-                city = listing.find_element(By.CLASS_NAME, 'locality').text
-                if not city in locations:
-                    print("Not looking for listings in city: " + city)
-                    continue
+            try:
+                for tries in range(3):
+                    try: #Sometimes the middle can't be found so just try refreshing twice, otherwise throw an error
+                        time.sleep(10)
+                        housing_section = browser.find_elements(By.CLASS_NAME, 'middle')
+                        if len(housing_section) == 3:
+                            listings = housing_section[2].find_element(By.TAG_NAME, 'ul').find_elements(By.XPATH, '*')
+                        else:# Bug where [2] was giving index error, my assumption is that one of the "middle" classes hadn't loaded yet so it was only 2 long
+                            listings = housing_section[1].find_element(By.TAG_NAME, 'ul').find_elements(By.XPATH, '*')
+                        succeeded = True
+                        break
+                    except:#Try refreshing the page
+                        listings = browser.find_elements(By.CLASS_NAME, 'middle')[1].find_element(By.TAG_NAME, 'ul').find_elements(By.XPATH, '*')
+                        succeeded = False
+                        browser.refresh()
+                if not succeeded: #Something beyond went wrong
+                    write_listings(file, checked_ids)
+                    return traceback.format_exc()
+                print("Number of listings on this page: " + str(len(listings)))
+                for listing in listings:
+                    listing_id = listing.find_element(By.CLASS_NAME, 'street-address').text
+                    print("*----------------------*")
+                    print(listing_id)
+                    
+                    #Check if it's in one of the locations
+                    city = listing.find_element(By.CLASS_NAME, 'locality').text
+                    if not city in locations:
+                        print("Not looking for listings in city: " + city)
+                        continue
 
-                #Check price
-                print("Checking price")
-                price_html = listing.find_element(By.CLASS_NAME, 'kenmerkValue')
-                price = int(price_html.text.split(' ')[1].split(',')[0].replace('.', ''))
-                if price > 1400:
-                    print("Too expensive")
-                    continue
-                print("Price is fine")
+                    #Check price
+                    print("Checking price")
+                    price_html = listing.find_element(By.CLASS_NAME, 'kenmerkValue')
+                    price = int(price_html.text.split(' ')[1].split(',')[0].replace('.', ''))
+                    if price > 1400:
+                        print("Too expensive")
+                        continue
+                    print("Price is fine")
 
-                #Check if it's been checked before
-                print("Checking archive")
-                file.write(listing_id + '\n')
-                if listing_id in checked_ids:
-                    print("Listing already checked")
-                    continue
-                print("New listing")
+                    #Check if it's been checked before
+                    print("Checking archive")
+                    file.write(listing_id + '\n')
+                    if listing_id in checked_ids:
+                        print("Listing already checked")
+                        continue
+                    print("New listing")
 
-                #Check google maps for travel time
-                max_time = 1.17 if city == 'Leiden' else 1
-                address = listing_id + ', ' + city
-                if not maps.is_close(address, max_time):
-                    continue
+                    #Check google maps for travel time
+                    max_time = 1.17 if city == 'Leiden' else 1
+                    address = listing_id + ', ' + city
+                    failed = False
+                    skip = False
+                    for try_count in range(3):# Try accessing the maps a maximum of 3 times
+                        try:
+                            print("Attempting to search google maps")
+                            dist = maps.is_close(address, max_time)
+                            failed = False
+                            if not dist:
+                                skip = True
+                            break
+                        except:
+                            print("Failed to search google maps")
+                            failed = True
+                            maps.close()
+                            maps = GoogleMaps(chrome_options)
+                    if skip:
+                        continue
+                    if failed:
+                        write_listings(file, checked_ids)#Re-write the checked ids
+                        return traceback.format_exc()
 
-                #If good: send notification
-                print("Getting link to listing")
-                hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
-                tel_params['text'] = "New suitable rental found: " + hyper_link
-                r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-            print("Done with Easy Makelaars")
-        return 'Done with Easy Makelaars'
+                    #If good: send notification
+                    print("Getting link to listing")
+                    hyper_link = listing.find_element(By.CLASS_NAME, "aanbodEntryLink").get_attribute('href')
+                    tel_params['text'] = "New suitable rental found: " + hyper_link
+                    r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                    checked_ids.append(listing_id)
+                    new_listings += 1
+            except:
+                    write_listings(file, checked_ids)#Re-write the checked ids
+                    return traceback.format_exc()
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Easy Makelaars" + ", new listings found: " + str(new_listings))
+        return 'Done with Easy Makelaars' + ", new listings found: " + str(new_listings)
 
     @staticmethod
     def rotsvast(url, browser, chrome_options):
@@ -203,81 +272,111 @@ class Website:
         browser.find_element(By.XPATH, '//*[@id="search"]/div[5]/div[2]/div[2]/div/button').click()
         browser.find_element(By.XPATH, '//*[@id="search"]/div[5]/div[2]/div[2]/div/div/ul/li[13]/a').click()
         search_box = browser.find_element(By.ID, 'searchPattern')
+
+        new_listings = 0;
         
         with open('checked_archive/rotsvast.txt', 'w') as file:
-            for location in locations:
-                #Clear the search box and then type in the next location
-                search_box.clear()
-                search_box.send_keys(location)
-                search_box.send_keys(Keys.RETURN)
-                print("Checking " + location)
-                blacklist = ["Bezichtiging vol", "Verhuurd"]
-                if location == 'Leiden':
-                    max_time = 1.17 #1h10min
-                else:
-                    max_time = 1
-                #Loop: check every page
-                while True:
-                    #Get all listings on the page
-                    time.sleep(10)
-                    listings = browser.find_elements_by_class_name('residence-gallery.clickable-parent.col-md-4')
-                    print("Number of listings on this page: " + str(len(listings)))
-                    for listing in listings:
-                        listing_address = listing.find_element(By.CLASS_NAME, 'residence-street')
-                        print("*----------------------*")
-                        print(listing_address.text)
+            try:#OPEN TRY: ERROR HANDLING
+                for location in locations:
+                    #Clear the search box and then type in the next location
+                    search_box.clear()
+                    search_box.send_keys(location)
+                    search_box.send_keys(Keys.RETURN)
+                    print("Checking " + location)
+                    blacklist = ["Bezichtiging vol", "Verhuurd"]
+                    if location == 'Leiden':
+                        max_time = 1.17 #1h10min
+                    else:
+                        max_time = 1
+                    #Loop: check every page
+                    while True:
+                        #Get all listings on the page
+                        time.sleep(10)
+                        listings = browser.find_elements_by_class_name('residence-gallery.clickable-parent.col-md-4')
+                        print("Number of listings on this page: " + str(len(listings)))
+                        for listing in listings:
+                            listing_address = listing.find_element(By.CLASS_NAME, 'residence-street')
+                            city_caps = listing.find_element(By.CLASS_NAME, 'residence-zipcode-place').text.split(' ')[1]
+                            city = city_caps[0] + city_caps[1:].lower()
+                            if city not in locations:
+                                print("Not searching for listing in " + city)
+                            print("*----------------------*")
+                            print(listing_address.text)
 
-                        #Check if it's available
-                        cont = False
-                        for phrase in blacklist:
-                            try:
-                                listing.find_element(By.XPATH, '//div[text()="' + phrase + '"]')
-                                cont = True
-                                break
-                            except NoSuchElementException:
-                                pass
-                        if cont:
-                            continue
-                        
-                        #Check price
-                        print("Checking price")
-                        price_html = listing.find_element(By.CLASS_NAME, 'residence-price')
-                        price = int(price_html.text.split(' ')[1].replace(',', '').replace('.', ''))/100
-                        if price > 1400:
-                            print("Too expensive")
-                            continue
-                        print("Price is fine")
+                            #Check if it's available
+                            cont = False
+                            for phrase in blacklist:
+                                try:
+                                    listing.find_element(By.XPATH, '//div[text()="' + phrase + '"]')
+                                    cont = True
+                                    break
+                                except NoSuchElementException:
+                                    pass
+                            if cont:
+                                continue
+                            
+                            #Check price
+                            print("Checking price")
+                            price_html = listing.find_element(By.CLASS_NAME, 'residence-price')
+                            price = int(price_html.text.split(' ')[1].replace(',', '').replace('.', ''))/100
+                            if price > 1400:
+                                print("Too expensive")
+                                continue
+                            print("Price is fine")
 
-                        #Check if it's been checked before
-                        print("Checking archive")
-                        listing_id = listing.get_attribute('id')
-                        file.write(listing_id + '\n')
-                        if listing_id in checked_ids:
-                            print("Listing already checked")
-                            continue
-                        print("New listing")
-                        
-                        #Check google maps for travel time
-                        address = listing_address.text + ', ' + location
-                        if not maps.is_close(address, max_time):
-                            continue
+                            #Check if it's been checked before
+                            print("Checking archive")
+                            listing_id = listing.get_attribute('id')
+                            file.write(listing_id + '\n')
+                            if listing_id in checked_ids:
+                                print("Listing already checked")
+                                continue
+                            print("New listing")
+                            
+                            #Check google maps for travel time
+                            address = listing_address.text + ', ' + location
+                            failed = False
+                            skip = False
+                            for try_count in range(3):# Try accessing the maps a maximum of 3 times
+                                try:
+                                    print("Attempting to search google maps")
+                                    dist = maps.is_close(address, max_time)
+                                    failed = False
+                                    if not dist:
+                                        skip = True
+                                    break
+                                except:
+                                    print("Failed to search google maps")
+                                    failed = True
+                                    maps.close()
+                                    maps = GoogleMaps(chrome_options)
+                            if skip:
+                                continue
+                            if failed:
+                                write_listings(file, checked_ids)#Re-write the checked ids
+                                return traceback.format_exc()
 
-                        #If good: send notification
-                        print("Getting link to listing")
-                        hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
-                        tel_params['text'] = "New suitable rental found: " + hyper_link
-                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                            #If good: send notification
+                            print("Getting link to listing")
+                            hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
+                            tel_params['text'] = "New suitable rental found: " + hyper_link
+                            r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                            checked_ids.append(listing_id)
+                            new_listings += 1
 
-                    #Check if there is a next button, not then break
-                    try:
-                        print("Checking for more pages")
-                        next_page = browser.find_element(By.XPATH, '//*[text()="Volgende"]')
-                        browser.get(next_page.get_attribute('href'))
-                    except NoSuchElementException:
-                        print("No more pages")
-                        break
-            print("Done with Rotsvast")
-            return 'Done with Rotsvast'
+                        #Check if there is a next button, not then break
+                        try:
+                            print("Checking for more pages")
+                            next_page = browser.find_element(By.XPATH, '//*[text()="Volgende"]')
+                            browser.get(next_page.get_attribute('href'))
+                        except NoSuchElementException:
+                            print("No more pages")
+                            break
+            except:
+                write_listings(file, checked_ids)#Re-write the checked ids
+                return traceback.format_exc()
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Rotsvast" + ", new listings found: " + str(new_listings))
+        return 'Done with Rotsvast' + ", new listings found: " + str(new_listings)
     
 
 class GoogleMaps:
@@ -285,6 +384,7 @@ class GoogleMaps:
         print("Opening and configuring google maps")
         google_maps = webdriver.Chrome(options = chrome_options)
         google_maps.get('https://www.google.com/maps/')
+        time.sleep(4)
         google_maps.find_element(By.CLASS_NAME, 'VfPpkd-LgbsSe.VfPpkd-LgbsSe-OWXEXe-k8QpJ.VfPpkd-LgbsSe-OWXEXe-dgl2Hf.nCP5yc.AjY5Oe.DuMIQc.LQeN7.Nc7WLe').click()#Press directions
         google_maps.find_element(By.ID, 'hArJGc').click()#Press
         time.sleep(4)
@@ -343,6 +443,11 @@ def read_listings(agency_name):
         for line in file:
             checked_ids.append(line.strip())
     return checked_ids
+
+def write_listings(file, listing_ids):
+    print("Dumping checked listings")
+    for listing_id in listing_ids:
+        file.write(listing_id + '\n')
     
     
 
