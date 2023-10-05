@@ -267,7 +267,7 @@ class Website:
         browser.get(url)
         try:
             browser.find_element(By.CLASS_NAME, 'mb_cookie_accept_btn').click()
-        except ElementNotInteractableException:
+        except (ElementNotInteractableException, NoSuchElementException):
             pass
         locations = ['Leiden', 'Amstelveen', 'Amsterdam', 'Haarlem']
         time.sleep(12)
