@@ -105,7 +105,7 @@ class Website:
                                     skip = True
                                 break
                             except:
-                                print("Failed to search google maps")
+                                print("Failed to search google maps: " + str(try_count))
                                 failed = True
                                 maps.close()
                                 maps = GoogleMaps(chrome_options)
@@ -125,9 +125,13 @@ class Website:
                     
                     #Check if there is more pages
                     try:
-                        print("Checking for more pages")
+                        print("Checking for new page")
                         next_page = browser.find_element(By.XPATH, '//*[text()="Volgende"]').find_element(By.XPATH, '..')
-                        browser.get(next_page.get_attribute('href'))
+                        li = next_page.find_element(By.XPATH, '..')
+                        if li.get_attribute('class') == 'disabled':
+                            raise InvalidArgumentException
+                        print("Going to next page")
+                        next_page.click()
                     except (NoSuchElementException, InvalidArgumentException) as e:
                         print("No more pages")
                         break
@@ -221,7 +225,7 @@ class Website:
                                 skip = True
                             break
                         except:
-                            print("Failed to search google maps")
+                            print("Failed to search google maps: " + str(try_count))
                             failed = True
                             maps.close()
                             maps = GoogleMaps(chrome_options)
@@ -346,7 +350,7 @@ class Website:
                                         skip = True
                                     break
                                 except:
-                                    print("Failed to search google maps")
+                                    print("Failed to search google maps: " + str(try_count))
                                     failed = True
                                     maps.close()
                                     maps = GoogleMaps(chrome_options)
@@ -420,6 +424,9 @@ class GoogleMaps:
             return False
         print("Close enough")
         return True
+
+    def close(self):
+        self.google_maps.close()
         
 
 def init_tel_bot():
