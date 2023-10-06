@@ -1,3 +1,3 @@
-funda https://www.funda.nl/zoeken/huur?selected_area=%5B%22leiden%22,%22amstelveen%22,%22haarlem%22,%22amsterdam%22%5D&price=%22-1500%22&publication_date=%221%22
+funda https://www.funda.nl/zoeken/huur?selected_area=%5B%22leiden%22,%22amstelveen%22,%22haarlem%22,%22amsterdam%22%5D&price=%22600-1500%22&publication_date=%221%22
 easy https://www.easymakelaars.nl/aanbod/woningaanbod/-1500/huur/aantal-80/
 rotsvast https://www.rotsvast.nl/woningaanbod/

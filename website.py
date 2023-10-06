@@ -14,6 +14,9 @@ import time
 import requests
 import traceback
 
+class BadAddress(Exception):
+    pass
+
 class Website:
     def __init__(self, url, execution_func):
         self.url = url
@@ -47,13 +50,14 @@ class Website:
             pass
 
         new_listings = 0;
-
+        time.sleep(10)
         #Read all pages
         with open('checked_archive/funda.txt', 'w') as file:
             try:
                 while True:
                     time.sleep(10)
-                    listings = browser.find_elements_by_class_name('border-light-2.mb-4.border-b.pb-4')#Grab available listings
+                    listing_part = browser.find_element(By.CLASS_NAME, "pt-4")
+                    listings = listing_part.find_elements(By.XPATH, '*')#Grab available listings
                     print("Number of listings on this page: " + str(len(listings)))
                     for listing in listings:
                         #Check if it's an advert
@@ -92,28 +96,11 @@ class Website:
 
                         #Check google maps for travel time
                         city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
+                        listing_id = trunc_addr(listing_id)
                         address = listing_id + ', ' + city
                         max_time = 1.17 if city == 'Leiden' else 1
-                        failed = False
-                        skip = False
-                        for try_count in range(3):# Try accessing the maps a maximum of 3 times
-                            try:
-                                print("Attempting to search google maps")
-                                dist = maps.is_close(address, max_time)
-                                failed = False
-                                if not dist:
-                                    skip = True
-                                break
-                            except:
-                                print("Failed to search google maps: " + str(try_count))
-                                failed = True
-                                maps.close()
-                                maps = GoogleMaps(chrome_options)
-                        if skip:
+                        if maps.search_maps(chrome_options, address, max_time):
                             continue
-                        if failed:
-                            write_listings(file, checked_ids)#Re-write the checked ids
-                            return traceback.format_exc()
 
                         #If good: send notification
                         print("Getting link to listing")
@@ -131,7 +118,7 @@ class Website:
                         if li.get_attribute('class') == 'disabled':
                             raise InvalidArgumentException
                         print("Going to next page")
-                        next_page.click()
+                        li.click()
                     except (NoSuchElementException, InvalidArgumentException) as e:
                         print("No more pages")
                         break
@@ -213,27 +200,10 @@ class Website:
 
                     #Check google maps for travel time
                     max_time = 1.17 if city == 'Leiden' else 1
+                    listing_id = trunc_addr(listing_id)
                     address = listing_id + ', ' + city
-                    failed = False
-                    skip = False
-                    for try_count in range(3):# Try accessing the maps a maximum of 3 times
-                        try:
-                            print("Attempting to search google maps")
-                            dist = maps.is_close(address, max_time)
-                            failed = False
-                            if not dist:
-                                skip = True
-                            break
-                        except:
-                            print("Failed to search google maps: " + str(try_count))
-                            failed = True
-                            maps.close()
-                            maps = GoogleMaps(chrome_options)
-                    if skip:
+                    if maps.search_maps(chrome_options, address, max_time):
                         continue
-                    if failed:
-                        write_listings(file, checked_ids)#Re-write the checked ids
-                        return traceback.format_exc()
 
                     #If good: send notification
                     print("Getting link to listing")
@@ -338,27 +308,10 @@ class Website:
                             print("New listing")
                             
                             #Check google maps for travel time
-                            address = listing_address.text + ', ' + location
-                            failed = False
-                            skip = False
-                            for try_count in range(3):# Try accessing the maps a maximum of 3 times
-                                try:
-                                    print("Attempting to search google maps")
-                                    dist = maps.is_close(address, max_time)
-                                    failed = False
-                                    if not dist:
-                                        skip = True
-                                    break
-                                except:
-                                    print("Failed to search google maps: " + str(try_count))
-                                    failed = True
-                                    maps.close()
-                                    maps = GoogleMaps(chrome_options)
-                            if skip:
+                            listing_id = trunc_addr(listing_addres.text)
+                            address = listing_id + ', ' + location
+                            if maps.search_maps(chrome_options, address, max_time):
                                 continue
-                            if failed:
-                                write_listings(file, checked_ids)#Re-write the checked ids
-                                return traceback.format_exc()
 
                             #If good: send notification
                             print("Getting link to listing")
@@ -425,6 +378,25 @@ class GoogleMaps:
         print("Close enough")
         return True
 
+    def search_maps(self, chrome_options, address, max_time):
+        skip = False
+        for try_count in range(3):# Try accessing the maps a maximum of 3 times
+            try:
+                print("Attempting to search google maps")
+                dist = self.is_close(address, max_time)
+                failed = False
+                if not dist:
+                    skip = True
+                skip = False
+                break
+            except:
+                print("Failed to search google maps: " + str(try_count))
+                skip = True
+                self.google_maps.close()
+                self.__init__(chrome_options)
+        return skip
+        
+
     def close(self):
         self.google_maps.close()
         
@@ -479,3 +451,16 @@ def read_websites():
             line = line.split(' ')
             websites[line[0]] = line[1]
     return websites
+
+def trunc_addr(address):
+    addr_list = address.split(' ')
+    for i, addr in enumerate(addr_list):
+        try:
+            int(addr)
+            new_addr = ''
+            for j in range(i+1):
+                new_addr += addr_list[j] + ' '
+            return new_addr[:-1]
+        except:
+            continue
+    return address
