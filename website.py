@@ -308,7 +308,7 @@ class Website:
                             print("New listing")
                             
                             #Check google maps for travel time
-                            listing_id = trunc_addr(listing_addres.text)
+                            listing_id = trunc_addr(listing_address.text)
                             address = listing_id + ', ' + location
                             if maps.search_maps(chrome_options, address, max_time):
                                 continue
