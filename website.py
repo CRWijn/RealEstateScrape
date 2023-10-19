@@ -29,7 +29,7 @@ class Website:
     @staticmethod
     def funda(url, browser, chrome_options):
         #Open a google maps instance
-        maps = GoogleMaps(chrome_options)
+        # maps = GoogleMaps(chrome_options)
 
         #Get the telegram bot ready
         params = init_tel_bot()
@@ -95,12 +95,12 @@ class Website:
                         print("New listing")
 
                         #Check google maps for travel time
-                        city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
+                        # city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
                         listing_id = trunc_addr(listing_id)
-                        address = listing_id + ', ' + city
-                        max_time = 1.17 if city == 'Leiden' else 1
-                        if maps.search_maps(chrome_options, address, max_time):
-                            continue
+                        # address = listing_id + ', ' + city
+                        # max_time = 1.17 if city == 'Leiden' else 1
+                        # if maps.search_maps(chrome_options, address, max_time):
+                        #     continue
 
                         #If good: send notification
                         print("Getting link to listing")
@@ -127,12 +127,11 @@ class Website:
                     return traceback.format_exc()
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Funda" + ", new listings found: " + str(new_listings))
         return 'Done with Funda' + ", new listings found: " + str(new_listings)
-            
 
     @staticmethod
     def easy(url, browser, chrome_options):
         #Open a google maps instance
-        maps = GoogleMaps(chrome_options)
+        # maps = GoogleMaps(chrome_options)
 
         #Get the telegram bot ready
         params = init_tel_bot()
@@ -199,11 +198,11 @@ class Website:
                     print("New listing")
 
                     #Check google maps for travel time
-                    max_time = 1.17 if city == 'Leiden' else 1
+                    # max_time = 1.17 if city == 'Leiden' else 1
                     listing_id = trunc_addr(listing_id)
-                    address = listing_id + ', ' + city
-                    if maps.search_maps(chrome_options, address, max_time):
-                        continue
+                    # address = listing_id + ', ' + city
+                    # if maps.search_maps(chrome_options, address, max_time):
+                    #     continue
 
                     #If good: send notification
                     print("Getting link to listing")
@@ -221,7 +220,7 @@ class Website:
     @staticmethod
     def rotsvast(url, browser, chrome_options):
         #Open a google maps instance
-        maps = GoogleMaps(chrome_options)
+        # maps = GoogleMaps(chrome_options)
 
         #Get the telegram bot ready
         params = init_tel_bot()
@@ -257,11 +256,6 @@ class Website:
                     search_box.send_keys(location)
                     search_box.send_keys(Keys.RETURN)
                     print("Checking " + location)
-                    blacklist = ["Bezichtiging vol", "Verhuurd"]
-                    if location == 'Leiden':
-                        max_time = 1.17 #1h10min
-                    else:
-                        max_time = 1
                     #Loop: check every page
                     while True:
                         #Get all listings on the page
@@ -276,18 +270,6 @@ class Website:
                                 print("Not searching for listing in " + city)
                             print("*----------------------*")
                             print(listing_address.text)
-
-                            #Check if it's available
-                            cont = False
-                            for phrase in blacklist:
-                                try:
-                                    listing.find_element(By.XPATH, '//div[text()="' + phrase + '"]')
-                                    cont = True
-                                    break
-                                except NoSuchElementException:
-                                    pass
-                            if cont:
-                                continue
                             
                             #Check price
                             print("Checking price")
@@ -309,9 +291,9 @@ class Website:
                             
                             #Check google maps for travel time
                             listing_id = trunc_addr(listing_address.text)
-                            address = listing_id + ', ' + location
-                            if maps.search_maps(chrome_options, address, max_time):
-                                continue
+                            # address = listing_id + ', ' + location
+                            # if maps.search_maps(chrome_options, address, max_time):
+                            #     continue
 
                             #If good: send notification
                             print("Getting link to listing")
