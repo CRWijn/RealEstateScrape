@@ -391,7 +391,7 @@ class Website:
             except:
                 write_listings(file, checked_ids)  # Re-write the checked ids
                 return traceback.format_exc()
-        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Rotsvast" + ", new listings found: " + str(
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Koops Makelaardij" + ", new listings found: " + str(
             new_listings))
         return 'Done with Koops Makelaardij' + ", new listings found: " + str(new_listings)
 
