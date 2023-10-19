@@ -316,7 +316,84 @@ class Website:
                 return traceback.format_exc()
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Rotsvast" + ", new listings found: " + str(new_listings))
         return 'Done with Rotsvast' + ", new listings found: " + str(new_listings)
-    
+
+    @staticmethod
+    def koops(url, browser, chrome_options):
+        # Get the telegram bot ready
+        params = init_tel_bot()
+        if type(params) == 'string':
+            return params
+        telegram_url, tel_params = params
+
+        # Read all the checked listings into a list so that we can wipe the archive of old listings
+        checked_ids = read_listings('koops')
+
+        # Open the real estate agency website
+        print("Opening Koops Makelaardij")
+        browser.get(url)
+        time.sleep(5)
+
+        #Select price range and rent
+        price_select = Select(browser.find_element(By.NAME, "price_range"))
+        price_select.select_by_value("0;1500")
+        rent_select = Select(browser.find_element(By.NAME, "rent_or_sale"))
+        rent_select.select_by_value("rent")
+
+        locations = ["Leiden", "Amsterdam", "Amstelveen", "Haarlem"]
+        search_box = browser.find_element(By.ID, "free-solo-demo")
+
+        new_listings = 0
+
+        with open('checked_archive/koops.txt', 'w') as file:
+            try:
+                for location in locations:
+                    #This website does not use next buttons for pages
+                    try: # Try clearing the search bar
+                        browser.find_element(By.CLASS_NAME, "MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeMedium.MuiAutocomplete-clearIndicator.css-edpqz1").click()
+                    except NoSuchElementException:
+                        pass
+                    search_box.send_keys(location)
+                    search_box.send_keys(Keys.RETURN)
+                    print("Checking " + location)
+                    time.sleep(10)
+                    listings = browser.find_elements(By.CLASS_NAME, "c-gallery-item.js-gallery-item.horizontal")
+                    print("Number of listings in " + location + ": " + str(len(listings)))
+                    for listing in listings:
+                        listing_address = listing.find_element(By.CLASS_NAME, "street").text
+                        print("*----------------------*")
+                        print(listing_address)
+
+                        #Check Price
+                        print("Checking price")
+                        price_html = listing.find_element(By.CLASS_NAME, 'price')
+                        price = int(price_html.text.split(' ')[1].replace(',-', '').replace('.', '')) / 100
+                        if price > 1400:
+                            print("Too expensive")
+                            continue
+                        print("Price is fine")
+
+                        #Check if it's been checked before
+                        print("Checking archive")
+                        hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
+                        listing_id = hyper_link.split("/")[-1].split('.')[0]
+                        file.write(listing_id + '\n')
+                        if listing_id in checked_ids:
+                            print("Listing already checked")
+                            continue
+                        print("New listing")
+
+                        #Send a link
+                        print("Getting link to listing")
+                        tel_params['text'] = "New suitable rental found: " + hyper_link
+                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                        checked_ids.append(listing_id)
+                        new_listings += 1
+            except:
+                write_listings(file, checked_ids)  # Re-write the checked ids
+                return traceback.format_exc()
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Rotsvast" + ", new listings found: " + str(
+            new_listings))
+        return 'Done with Koops Makelaardij' + ", new listings found: " + str(new_listings)
 
 class GoogleMaps:
     def __init__(self, chrome_options):

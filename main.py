@@ -46,6 +46,8 @@ if __name__ == '__main__':
             try:
                 report = site.execute_search(browser, chrome_options)
                 logger.log(report)
+            except SystemExit:
+                exit()
             except:
                 err = traceback.format_exc()
                 print(err)
