@@ -340,7 +340,6 @@ class Website:
         rent_select.select_by_value("rent")
 
         locations = ["Leiden", "Amsterdam", "Amstelveen", "Haarlem"]
-        search_box = browser.find_element(By.ID, "free-solo-demo")
 
         new_listings = 0
 
@@ -350,8 +349,12 @@ class Website:
                     #This website does not use next buttons for pages
                     try: # Try clearing the search bar
                         browser.find_element(By.CLASS_NAME, "MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeMedium.MuiAutocomplete-clearIndicator.css-edpqz1").click()
-                    except NoSuchElementException:
+                    except (NoSuchElementException, ElementNotInteractableException):
                         pass
+                    try:
+                        search_box = browser.find_element(By.CLASS_NAME, "MuiOutlinedInput-input.MuiInputBase-input.MuiInputBase-inputAdornedEnd.MuiAutocomplete-input.MuiAutocomplete-inputFocused.css-1uvydh2")
+                    except NoSuchElementException:
+                        search_box = browser.find_element(By.ID, "free-solo-demo")
                     search_box.send_keys(location)
                     search_box.send_keys(Keys.RETURN)
                     print("Checking " + location)
