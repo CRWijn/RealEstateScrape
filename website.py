@@ -7,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import InvalidArgumentException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from datetime import datetime
 
@@ -348,8 +349,10 @@ class Website:
                 for location in locations:
                     #This website does not use next buttons for pages
                     try: # Try clearing the search bar
-                        browser.find_element(By.CLASS_NAME, "MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeMedium.MuiAutocomplete-clearIndicator.css-edpqz1").click()
-                    except (NoSuchElementException, ElementNotInteractableException):
+                        clear_button = browser.find_element(By.CLASS_NAME, "MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeMedium.MuiAutocomplete-clearIndicator.css-edpqz1")
+                        a = ActionChains(browser)
+                        a.move_to_element(clear_button).click().perform()
+                    except NoSuchElementException:
                         pass
                     try:
                         search_box = browser.find_element(By.CLASS_NAME, "MuiOutlinedInput-input.MuiInputBase-input.MuiInputBase-inputAdornedEnd.MuiAutocomplete-input.MuiAutocomplete-inputFocused.css-1uvydh2")
