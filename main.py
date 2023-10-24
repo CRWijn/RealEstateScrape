@@ -45,6 +45,7 @@ if __name__ == '__main__':
         for site in websites:
             try:
                 report = site.execute_search(browser, chrome_options)
+                print(report)
                 logger.log(report)
             except SystemExit:
                 exit()

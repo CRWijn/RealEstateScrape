@@ -52,8 +52,9 @@ class Website:
 
         new_listings = 0;
         time.sleep(10)
+        listings_arr = []
         #Read all pages
-        with open('checked_archive/funda.txt', 'w') as file:
+        with open('checked_archive/funda.txt', 'a') as file:
             try:
                 while True:
                     time.sleep(10)
@@ -88,8 +89,9 @@ class Website:
 
                         #There's no need to check a blacklist since the filter is set to past 24 hours
                         #Check if it's been checked before
+                        listing_id = trunc_addr(listing_id)
                         print("Checking archive")
-                        file.write(listing_id + '\n')
+                        listings_arr.append(listing_id + '\n')
                         if listing_id in checked_ids:
                             print("Listing already checked")
                             continue
@@ -97,7 +99,6 @@ class Website:
 
                         #Check google maps for travel time
                         # city = listing.find_element(By.CLASS_NAME, 'text-dark-1.mb-2').text.split(' ')[2]
-                        listing_id = trunc_addr(listing_id)
                         # address = listing_id + ', ' + city
                         # max_time = 1.17 if city == 'Leiden' else 1
                         # if maps.search_maps(chrome_options, address, max_time):
@@ -108,7 +109,7 @@ class Website:
                         hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
                         tel_params['text'] = "New suitable rental found: " + hyper_link
                         r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-                        checked_ids.append(listing_id)
+                        file.write(listing_id + '\n')
                         new_listings += 1
                     
                     #Check if there is more pages
@@ -124,8 +125,9 @@ class Website:
                         print("No more pages")
                         break
             except:
-                    write_listings(file, checked_ids)#Re-write the checked ids
-                    return traceback.format_exc()
+                return traceback.format_exc()
+        with open('checked_archive/funda.txt', 'w') as file:
+            write_listings(file, listings_arr)
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Funda" + ", new listings found: " + str(new_listings))
         return 'Done with Funda' + ", new listings found: " + str(new_listings)
 
@@ -489,7 +491,6 @@ def read_listings(agency_name):
     return checked_ids
 
 def write_listings(file, listing_ids):
-    print("Dumping checked listings")
     for listing_id in listing_ids:
         file.write(listing_id + '\n')
     
