@@ -19,16 +19,17 @@ class BadAddress(Exception):
     pass
 
 class Website:
-    def __init__(self, url, execution_func):
+    def __init__(self, url, execution_func, send_new_listings):
         self.url = url
         self.exec_func = execution_func
+        self.broadcast = send_new_listings
 
     def execute_search(self, browser, chrome_options):
-        report = self.exec_func(self.url, browser, chrome_options)
+        report = self.exec_func(self.url, browser, chrome_options, self.broadcast)
         return report
 
     @staticmethod
-    def funda(url, browser, chrome_options):
+    def funda(url, browser, chrome_options, broadcast):
         #Open a google maps instance
         # maps = GoogleMaps(chrome_options)
 
@@ -108,7 +109,8 @@ class Website:
                         print("Getting link to listing")
                         hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
                         tel_params['text'] = "New suitable rental found: " + hyper_link
-                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                        if broadcast:
+                            r = requests.post(telegram_url + "/sendMessage", params=tel_params)
                         file.write(listing_id + '\n')
                         new_listings += 1
                     
@@ -132,7 +134,7 @@ class Website:
         return 'Done with Funda' + ", new listings found: " + str(new_listings)
 
     @staticmethod
-    def easy(url, browser, chrome_options):
+    def easy(url, browser, chrome_options, broadcast):
         #Open a google maps instance
         # maps = GoogleMaps(chrome_options)
 
@@ -148,11 +150,12 @@ class Website:
         #Open the real estate agency website
         print("Opening Easy Makelaars")
         browser.get(url)
-        locations = ['Leiden', 'Amstelveen', 'Amsterdam', 'Haarlem']
+        locations = ['Leiden', 'Amstelveen', 'Amsterdam', 'Haarlem', 'Hilversum']
 
         new_listings = 0;
-        
-        with open('checked_archive/easy.txt', 'w') as file:
+        listings_arr = []
+
+        with open('checked_archive/easy.txt', 'a') as file:
             try:
                 for tries in range(3):
                     try: #Sometimes the middle can't be found so just try refreshing twice, otherwise throw an error
@@ -169,7 +172,6 @@ class Website:
                         succeeded = False
                         browser.refresh()
                 if not succeeded: #Something beyond went wrong
-                    write_listings(file, checked_ids)
                     return traceback.format_exc()
                 print("Number of listings on this page: " + str(len(listings)))
                 for listing in listings:
@@ -194,7 +196,7 @@ class Website:
 
                     #Check if it's been checked before
                     print("Checking archive")
-                    file.write(listing_id + '\n')
+                    listings_arr.append(listing_id + '\n')
                     if listing_id in checked_ids:
                         print("Listing already checked")
                         continue
@@ -202,7 +204,7 @@ class Website:
 
                     #Check google maps for travel time
                     # max_time = 1.17 if city == 'Leiden' else 1
-                    listing_id = trunc_addr(listing_id)
+                    #listing_id = trunc_addr(listing_id)
                     # address = listing_id + ', ' + city
                     # if maps.search_maps(chrome_options, address, max_time):
                     #     continue
@@ -211,17 +213,19 @@ class Website:
                     print("Getting link to listing")
                     hyper_link = listing.find_element(By.CLASS_NAME, "aanbodEntryLink").get_attribute('href')
                     tel_params['text'] = "New suitable rental found: " + hyper_link
-                    r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-                    checked_ids.append(listing_id)
+                    if broadcast:
+                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                    file.write(listing_id + '\n')
                     new_listings += 1
             except:
-                    write_listings(file, checked_ids)#Re-write the checked ids
                     return traceback.format_exc()
+        with open('checked_archive/easy.txt', 'w') as file:
+            write_listings(file, listings_arr)
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Easy Makelaars" + ", new listings found: " + str(new_listings))
         return 'Done with Easy Makelaars' + ", new listings found: " + str(new_listings)
 
     @staticmethod
-    def rotsvast(url, browser, chrome_options):
+    def rotsvast(url, browser, chrome_options, broadcast):
         #Open a google maps instance
         # maps = GoogleMaps(chrome_options)
 
@@ -250,8 +254,9 @@ class Website:
         search_box = browser.find_element(By.ID, 'searchPattern')
 
         new_listings = 0;
+        listings_arr = []
         
-        with open('checked_archive/rotsvast.txt', 'w') as file:
+        with open('checked_archive/rotsvast.txt', 'a') as file:
             try:#OPEN TRY: ERROR HANDLING
                 for location in locations:
                     #Clear the search box and then type in the next location
@@ -286,14 +291,14 @@ class Website:
                             #Check if it's been checked before
                             print("Checking archive")
                             listing_id = listing.get_attribute('id')
-                            file.write(listing_id + '\n')
+                            listings_arr.append(listing_id + '\n')
                             if listing_id in checked_ids:
                                 print("Listing already checked")
                                 continue
                             print("New listing")
                             
                             #Check google maps for travel time
-                            listing_id = trunc_addr(listing_address.text)
+                            #listing_id = trunc_addr(listing_address.text)
                             # address = listing_id + ', ' + location
                             # if maps.search_maps(chrome_options, address, max_time):
                             #     continue
@@ -302,8 +307,9 @@ class Website:
                             print("Getting link to listing")
                             hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
                             tel_params['text'] = "New suitable rental found: " + hyper_link
-                            r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-                            checked_ids.append(listing_id)
+                            if broadcast:
+                                r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                            file.write(listing_id + '\n')
                             new_listings += 1
 
                         #Check if there is a next button, not then break
@@ -315,13 +321,14 @@ class Website:
                             print("No more pages")
                             break
             except:
-                write_listings(file, checked_ids)#Re-write the checked ids
                 return traceback.format_exc()
+        with open('checked_archive/rotsvast.txt', 'w') as file:
+            write_listings(file, listings_arr)
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Rotsvast" + ", new listings found: " + str(new_listings))
         return 'Done with Rotsvast' + ", new listings found: " + str(new_listings)
 
     @staticmethod
-    def koops(url, browser, chrome_options):
+    def koops(url, browser, chrome_options, broadcast):
         # Get the telegram bot ready
         params = init_tel_bot()
         if type(params) == 'string':
@@ -342,11 +349,12 @@ class Website:
         rent_select = Select(browser.find_element(By.NAME, "rent_or_sale"))
         rent_select.select_by_value("rent")
 
-        locations = ["Leiden", "Amsterdam", "Amstelveen", "Haarlem"]
+        locations = ["Leiden", "Amsterdam", "Amstelveen", "Haarlem", 'Hilversum']
 
         new_listings = 0
+        listings_arr = []
 
-        with open('checked_archive/koops.txt', 'w') as file:
+        with open('checked_archive/koops.txt', 'a') as file:
             try:
                 for location in locations:
                     #This website does not use next buttons for pages
@@ -384,7 +392,7 @@ class Website:
                         print("Checking archive")
                         hyper_link = listing.find_element(By.TAG_NAME, "a").get_attribute('href')
                         listing_id = hyper_link.split("/")[-1].split('.')[0]
-                        file.write(listing_id + '\n')
+                        listings_arr.append(listing_id + '\n')
                         if listing_id in checked_ids:
                             print("Listing already checked")
                             continue
@@ -393,12 +401,15 @@ class Website:
                         #Send a link
                         print("Getting link to listing")
                         tel_params['text'] = "New suitable rental found: " + hyper_link
-                        r = requests.post(telegram_url + "/sendMessage", params=tel_params)
-                        checked_ids.append(listing_id)
+                        if broadcast:
+                            r = requests.post(telegram_url + "/sendMessage", params=tel_params)
+                        file.write(listing_id + '\n')
                         new_listings += 1
             except:
-                write_listings(file, checked_ids)  # Re-write the checked ids
                 return traceback.format_exc()
+
+        with open('checked_archive/koops.txt', 'w') as file:
+            write_listings(file, listings_arr)
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "- Done with Koops Makelaardij" + ", new listings found: " + str(
             new_listings))
         return 'Done with Koops Makelaardij' + ", new listings found: " + str(new_listings)
