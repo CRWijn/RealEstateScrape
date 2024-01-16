@@ -31,7 +31,7 @@ if __name__ == '__main__':
     website_dict = read_websites()
     websites = []
     for site in website_dict:
-        new_site = Website(website_dict[site], getattr(Website, site), True)
+        new_site = Website(website_dict[site][1], website_dict[site][0], True)
         websites.append(new_site)
 
     #Setup periodicity
