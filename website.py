@@ -18,6 +18,7 @@ import traceback
 class BadAddress(Exception):
     pass
 
+#BUG: Sometimes same housing is sent twice. FIX: More secure checked archive editting. Only clear file and write stuff at the end. In the mean time append new listings to a list and the file and append old listings to the list as well.
 class Website:
     def __init__(self, url, execution_func):
         self.url = url
@@ -372,7 +373,7 @@ class Website:
                         #Check Price
                         print("Checking price")
                         price_html = listing.find_element(By.CLASS_NAME, 'price')
-                        price = int(price_html.text.split(' ')[1].replace(',-', '').replace('.', '')) / 100
+                        price = int(price_html.text.split(' ')[1].replace(',-', '').replace('.', ''))
                         if price > 1400:
                             print("Too expensive")
                             continue
