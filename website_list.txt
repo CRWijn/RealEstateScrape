@@ -2,4 +2,4 @@ funda https://www.funda.nl/zoeken/huur?selected_area=%5B%22leiden%22,%22amstelve
 easy https://www.easymakelaars.nl/aanbod/woningaanbod/-1500/huur/aantal-80/
 rotsvast https://www.rotsvast.nl/woningaanbod/
 #koops https://www.koopsmakelaardij.nl/zoeken
-#pararius
+pararius https://www.pararius.nl/huurwoningen/nederland/600-1500
